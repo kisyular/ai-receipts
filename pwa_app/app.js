@@ -1,7 +1,8 @@
 // Receipt Scanner PWA - Main JavaScript
 class ReceiptScanner {
     constructor() {
-        this.apiUrl = 'http://127.0.0.1:8000'; // FastAPI backend URL
+        // Update this to your Azure App Service URL when deployed
+        this.apiUrl = 'receipt-real-data-cnc6fwcve2bdcra7.eastus-01.azurewebsites.net'; // FastAPI backend URL
         this.currentFile = null;
         this.init();
     }
