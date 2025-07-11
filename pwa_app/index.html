@@ -1,0 +1,243 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Receipt Scanner</title>
+    
+    <!-- PWA Meta Tags -->
+    <meta name="description" content="Scan and analyze receipts with AI">
+    <meta name="theme-color" content="#2563eb">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="default">
+    <meta name="apple-mobile-web-app-title" content="Receipt Scanner">
+    
+    <!-- PWA Manifest -->
+    <link rel="manifest" href="manifest.json">
+    
+    <!-- Icons -->
+    <link rel="icon" type="image/png" sizes="32x32" href="icons/icon-32x32.png">
+    <link rel="icon" type="image/png" sizes="16x16" href="icons/icon-16x16.png">
+    <link rel="apple-touch-icon" href="icons/icon-192x192.png">
+    
+    <!-- Styles -->
+    <link rel="stylesheet" href="styles.css">
+
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" integrity="sha384-QWTKZyjpPEjISv5WaRU9OFeRpok6YctnYmDr5pNlyT2bRjXh0JMhjY6hW+ALEwIH" crossorigin="anonymous">
+    
+    <!-- Font Awesome for icons -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+</head>
+<body>
+    <div class="app-container">
+        <!-- Header -->
+        <header class="app-header">
+            <h1><i class="fas fa-receipt"></i> Receipt Scanner</h1>
+            <p>Scan and analyze receipts with AI</p>
+        </header>
+
+        <!-- Main Content -->
+        <main class="main-content">
+            <!-- Navigation Tabs -->
+            <div class="nav-tabs">
+                <button class="tab-btn active" id="scanTab">
+                    <i class="fas fa-camera"></i> Scan Receipt
+                </button>
+                <button class="tab-btn" id="historyTab">
+                    <i class="fas fa-history"></i> Saved Receipts
+                </button>
+            </div>
+
+            <!-- Scan Tab Content -->
+            <div class="tab-content active" id="scanContent">
+                <!-- Upload Section -->
+                <section class="upload-section" id="uploadSection">
+                    <div class="upload-area" id="uploadArea">
+                        <div class="upload-icon">
+                            <i class="fas fa-camera"></i>
+                        </div>
+                        <h3>Capture or Select Receipt</h3>
+                        <p>Take a photo or choose from gallery</p>
+                        
+                        <div class="upload-buttons">
+                            <button class="btn btn-primary" id="cameraBtn">
+                                <i class="fas fa-camera"></i> Take Photo
+                            </button>
+                            <button class="btn btn-secondary" id="galleryBtn">
+                                <i class="fas fa-images"></i> Choose from Gallery
+                            </button>
+                        </div>
+                    </div>
+                    
+                    <!-- Hidden file input -->
+                    <input type="file" id="fileInput" accept="image/*" style="display: none;">
+                </section>
+
+                <!-- Image Preview Section -->
+                <section class="preview-section" id="previewSection" style="display: none;">
+                    <div class="preview-container">
+                        <div class="preview-header">
+                            <h3>Receipt Preview</h3>
+                            <button class="btn btn-small" id="changeImageBtn">
+                                <i class="fas fa-edit"></i> Change
+                            </button>
+                        </div>
+                        <div class="image-container">
+                            <img id="previewImg" alt="Receipt preview">
+                        </div>
+                        <button class="btn btn-primary btn-large" id="analyzeBtn">
+                            <i class="fas fa-magic"></i> Analyze Receipt
+                        </button>
+                    </div>
+                </section>
+
+                <!-- Loading Section -->
+                <section class="loading-section" id="loadingSection" style="display: none;">
+                    <div class="loading-container">
+                        <div class="spinner"></div>
+                        <h3>Analyzing Receipt...</h3>
+                        <p>Please wait while we process your receipt</p>
+                        <div class="progress-bar">
+                            <div class="progress-fill" id="progressFill"></div>
+                        </div>
+                    </div>
+                </section>
+
+                <!-- Results Section -->
+                <section class="results-section" id="resultsSection" style="display: none;">
+                    <div class="results-container">
+                        <div class="results-header">
+                            <h3><i class="fas fa-check-circle"></i> Analysis Complete</h3>
+                                                    <div class="results-actions">
+                            <button class="btn btn-primary" id="newScanBtn">
+                                <i class="fas fa-plus"></i> New Scan
+                            </button>
+                        </div>
+                        </div>
+                        
+                        <div class="results-content" id="resultsContent">
+                            <!-- Results will be populated here -->
+                        </div>
+                    </div>
+                </section>
+
+                <!-- Error Section -->
+                <section class="error-section" id="errorSection" style="display: none;">
+                    <div class="error-container">
+                        <div class="error-icon">
+                            <i class="fas fa-exclamation-triangle"></i>
+                        </div>
+                        <h3>Oops! Something went wrong</h3>
+                        <p id="errorMessage">An error occurred while processing your receipt.</p>
+                        <button class="btn btn-primary" id="retryBtn">
+                            <i class="fas fa-redo"></i> Try Again
+                        </button>
+                    </div>
+                </section>
+            </div>
+
+            <!-- History Tab Content -->
+            <div class="tab-content" id="historyContent">
+                <section class="history-section">
+                    <div class="history-header">
+                        <h3><i class="fas fa-history"></i> Saved Receipts</h3>
+                        <button class="btn btn-small" id="refreshHistoryBtn">
+                            <i class="fas fa-sync"></i> Refresh
+                        </button>
+                    </div>
+                    
+                    <div class="history-container" id="historyContainer">
+                        <div class="loading-history">
+                            <div class="spinner"></div>
+                            <p>Loading saved receipts...</p>
+                        </div>
+                    </div>
+                </section>
+            </div>
+        </main>
+
+            <!-- Image Preview Section -->
+            <section class="preview-section" id="previewSection" style="display: none;">
+                <div class="preview-container">
+                    <div class="preview-header">
+                        <h3>Receipt Preview</h3>
+                        <button class="btn btn-small" id="changeImageBtn">
+                            <i class="fas fa-edit"></i> Change
+                        </button>
+                    </div>
+                    <div class="image-container">
+                        <img id="previewImg" alt="Receipt preview">
+                    </div>
+                    <button class="btn btn-primary btn-large" id="analyzeBtn">
+                        <i class="fas fa-magic"></i> Analyze Receipt
+                    </button>
+                </div>
+            </section>
+
+            <!-- Loading Section -->
+            <section class="loading-section" id="loadingSection" style="display: none;">
+                <div class="loading-container">
+                    <div class="spinner"></div>
+                    <h3>Analyzing Receipt...</h3>
+                    <p>Please wait while we process your receipt</p>
+                    <div class="progress-bar">
+                        <div class="progress-fill" id="progressFill"></div>
+                    </div>
+                </div>
+            </section>
+
+            <!-- Results Section -->
+            <section class="results-section" id="resultsSection" style="display: none;">
+                <div class="results-container">
+                    <div class="results-header">
+                        <h3><i class="fas fa-check-circle"></i> Analysis Complete</h3>
+                        <button class="btn btn-small" id="newScanBtn">
+                            <i class="fas fa-plus"></i> New Scan
+                        </button>
+                    </div>
+                    
+                    <div class="results-content" id="resultsContent">
+                        <!-- Results will be populated here -->
+                    </div>
+                </div>
+            </section>
+
+            <!-- Error Section -->
+            <section class="error-section" id="errorSection" style="display: none;">
+                <div class="error-container">
+                    <div class="error-icon">
+                        <i class="fas fa-exclamation-triangle"></i>
+                    </div>
+                    <h3>Oops! Something went wrong</h3>
+                    <p id="errorMessage">An error occurred while processing your receipt.</p>
+                    <button class="btn btn-primary" id="retryBtn">
+                        <i class="fas fa-redo"></i> Try Again
+                    </button>
+                </div>
+            </section>
+        </main>
+
+        <!-- Footer -->
+        <footer class="app-footer">
+            <p>&copy; 2024 Receipt Scanner. Powered by AI.</p>
+        </footer>
+    </div>
+
+    <!-- Scripts -->
+    <script src="app.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.min.js" integrity="sha384-0pUGZvbkm6XF6gxjEnlmuGrJXVbNuzT9qBBavbLwCsOGabYfZo0T0to5eqruptLy" crossorigin="anonymous"></script>
+        // Register service worker
+        if ('serviceWorker' in navigator) {
+            window.addEventListener('load', () => {
+                navigator.serviceWorker.register('sw.js')
+                    .then(registration => {
+                        console.log('SW registered: ', registration);
+                    })
+                    .catch(registrationError => {
+                        console.log('SW registration failed: ', registrationError);
+                    });
+            });
+        }
+    </script>
+</body>
+</html> 
