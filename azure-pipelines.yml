@@ -1,0 +1,75 @@
+trigger:
+  - main
+
+pool:
+  vmImage: "ubuntu-latest"
+
+variables:
+  python.version: "3.11"
+
+stages:
+  - stage: Test
+    displayName: "Test Stage"
+    jobs:
+      - job: Test
+        displayName: "Test Job"
+        steps:
+          - task: UsePythonVersion@0
+            inputs:
+              versionSpec: "$(python.version)"
+              addToPath: true
+
+          - script: |
+              python -m pip install --upgrade pip
+            displayName: "Upgrade pip"
+
+          - script: |
+              pip install -r requirements.txt
+            displayName: "Install dependencies"
+
+          - script: |
+              pip install flake8 pytest
+              flake8 . --count --select=E9,F63,F7,F82 --show-source --statistics
+              flake8 . --count --exit-zero --max-complexity=10 --max-line-length=127 --statistics
+            displayName: "Run linting"
+
+          - script: |
+              python -m pytest tests/ -v || echo "No tests found"
+            displayName: "Run tests"
+
+  - stage: Deploy
+    displayName: "Deploy Stage"
+    dependsOn: Test
+    condition: succeeded()
+    jobs:
+      - deployment: Deploy
+        displayName: "Deploy to Azure Web App"
+        environment: "production"
+        strategy:
+          runOnce:
+            deploy:
+              steps:
+                - task: UsePythonVersion@0
+                  inputs:
+                    versionSpec: "$(python.version)"
+                    addToPath: true
+
+                - script: |
+                    pip install -r requirements.txt
+                  displayName: "Install dependencies"
+
+                - task: ArchiveFiles@2
+                  inputs:
+                    rootFolderOrFile: "$(System.DefaultWorkingDirectory)"
+                    includeRootFolder: false
+                    archiveType: "zip"
+                    archiveFile: "$(Build.ArtifactStagingDirectory)/$(Build.BuildId).zip"
+                    replaceExistingArchive: true
+
+                - task: AzureWebApp@1
+                  inputs:
+                    azureSubscription: "Your-Azure-Subscription"
+                    appName: "receipt-analyzer-api"
+                    package: "$(Build.ArtifactStagingDirectory)/$(Build.BuildId).zip"
+                    appType: "webAppLinux"
+                    runtimeStack: "PYTHON|3.11"

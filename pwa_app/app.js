@@ -206,7 +206,24 @@ class ReceiptScanner {
             this.currentStream = stream;
         } catch (error) {
             console.error('Camera start error:', error);
-            this.showError('Failed to start camera');
+            
+            // Handle specific camera permission errors
+            if (error.name === 'NotAllowedError') {
+                this.showError('Camera permission denied. Please allow camera access and try again.');
+            } else if (error.name === 'NotFoundError') {
+                this.showError('No camera found on this device. Please use gallery selection instead.');
+            } else if (error.name === 'NotSupportedError') {
+                this.showError('Camera not supported on this device. Please use gallery selection instead.');
+            } else {
+                this.showError('Failed to start camera. Please try gallery selection instead.');
+            }
+            
+            // Close camera modal and show upload section
+            const modal = document.querySelector('.camera-modal');
+            if (modal) {
+                modal.remove();
+            }
+            this.showSection('uploadSection');
         }
     }
 
@@ -312,11 +329,32 @@ class ReceiptScanner {
         const progressFill = document.getElementById('progressFill');
         let progress = 0;
         
+        // More realistic progress simulation
+        const stages = [
+            { target: 20, duration: 1000 },  // Uploading
+            { target: 40, duration: 1500 },  // Processing
+            { target: 70, duration: 2000 },  // Analyzing
+            { target: 90, duration: 1000 }   // Finalizing
+        ];
+        
+        let currentStage = 0;
+        
         const interval = setInterval(() => {
-            progress += Math.random() * 15;
-            if (progress > 90) progress = 90;
-            progressFill.style.width = progress + '%';
-        }, 200);
+            const stage = stages[currentStage];
+            if (stage) {
+                const increment = (stage.target - progress) / (stage.duration / 100);
+                progress += increment;
+                
+                if (progress >= stage.target) {
+                    currentStage++;
+                    if (currentStage >= stages.length) {
+                        progress = 90; // Don't go to 100% until complete
+                    }
+                }
+            }
+            
+            progressFill.style.width = Math.min(progress, 90) + '%';
+        }, 100);
 
         this.progressInterval = interval;
     }
@@ -434,9 +472,25 @@ class ReceiptScanner {
         document.getElementById(sectionId).style.display = 'block';
     }
 
-    showError(message) {
+    showError(message, showRetry = true) {
         document.getElementById('errorMessage').textContent = message;
+        
+        // Show/hide retry button based on context
+        const retryBtn = document.getElementById('retryBtn');
+        if (retryBtn) {
+            retryBtn.style.display = showRetry ? 'block' : 'none';
+        }
+        
         this.showSection('errorSection');
+        
+        // Auto-hide error after 10 seconds if it's not a critical error
+        if (!showRetry) {
+            setTimeout(() => {
+                if (document.getElementById('errorSection').style.display !== 'none') {
+                    this.showSection('uploadSection');
+                }
+            }, 10000);
+        }
     }
 
     resetApp() {
@@ -718,7 +772,7 @@ class ReceiptScanner {
         const confidence = receipt.confidence_score ? `${(receipt.confidence_score * 100).toFixed(1)}%` : 'N/A';
 
         let html = `
-            <div class="row mb-3">
+            <div class="row mb-3 text-center">
                 <div class="col-6">
                     <strong>Merchant:</strong>
                 </div>
@@ -726,7 +780,7 @@ class ReceiptScanner {
                     ${merchant}
                 </div>
             </div>
-            <div class="row mb-3">
+            <div class="row mb-3 text-center">
                 <div class="col-6">
                     <strong>Date:</strong>
                 </div>
@@ -734,7 +788,7 @@ class ReceiptScanner {
                     ${date}
                 </div>
             </div>
-            <div class="row mb-3">
+            <div class="row mb-3 text-center">
                 <div class="col-6">
                     <strong>Total:</strong>
                 </div>
@@ -742,7 +796,7 @@ class ReceiptScanner {
                     <span class="text-success fw-bold">${total}</span>
                 </div>
             </div>
-            <div class="row mb-3">
+            <div class="row mb-3 text-center">
                 <div class="col-6">
                     <strong>Subtotal:</strong>
                 </div>
@@ -750,7 +804,7 @@ class ReceiptScanner {
                     ${subtotal}
                 </div>
             </div>
-            <div class="row mb-3">
+            <div class="row mb-3 text-center">
                 <div class="col-6">
                     <strong>Tax:</strong>
                 </div>
@@ -758,7 +812,7 @@ class ReceiptScanner {
                     ${tax}
                 </div>
             </div>
-            <div class="row mb-3">
+            <div class="row mb-3 text-center">
                 <div class="col-6">
                     <strong>Confidence:</strong>
                 </div>

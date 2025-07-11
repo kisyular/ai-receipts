@@ -5,9 +5,21 @@ Uses Azure AI Document Intelligence to extract receipt data and store in databas
 
 import os
 import uuid
+import logging
 from datetime import datetime
 from typing import List, Optional
 from pathlib import Path
+
+# Configure logging
+logging.basicConfig(
+    level=logging.INFO,
+    format='%(asctime)s - %(name)s - %(levelname)s - %(message)s',
+    handlers=[
+        logging.FileHandler('app.log'),
+        logging.StreamHandler()
+    ]
+)
+logger = logging.getLogger(__name__)
 
 from fastapi import FastAPI, File, UploadFile, HTTPException, Depends, status
 from fastapi.middleware.cors import CORSMiddleware
@@ -35,15 +47,29 @@ app = FastAPI(
 # CORS middleware for frontend integration
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],  # Configure appropriately for production
+    allow_origins=[
+        "http://localhost:8080",
+        "http://127.0.0.1:8080", 
+        "http://localhost:3000",
+        "http://127.0.0.1:3000",
+        # Add your production domain here
+        # "https://yourdomain.com"
+    ],
     allow_credentials=True,
-    allow_methods=["*"],
+    allow_methods=["GET", "POST", "DELETE", "OPTIONS"],
     allow_headers=["*"],
 )
 
 # Database setup
-SQLALCHEMY_DATABASE_URL = "sqlite:///./receipts.db"
-engine = create_engine(SQLALCHEMY_DATABASE_URL, connect_args={"check_same_thread": False})
+DATABASE_URL = os.getenv("DATABASE_URL", "sqlite:///./receipts.db")
+
+if DATABASE_URL.startswith("sqlite"):
+    # SQLite configuration (development)
+    engine = create_engine(DATABASE_URL, connect_args={"check_same_thread": False})
+else:
+    # PostgreSQL/MySQL configuration (production)
+    engine = create_engine(DATABASE_URL)
+
 SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
 Base = declarative_base()
 
@@ -163,10 +189,22 @@ def analyze_receipt_from_file(file_path: str):
             )
         receipts = poller.result()
         return receipts
-    except Exception as e:
+    except FileNotFoundError:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Uploaded file not found"
+        )
+    except PermissionError:
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail=f"Error analyzing receipt: {str(e)}"
+            detail="Permission denied accessing file"
+        )
+    except Exception as e:
+        # Log the full error for debugging
+        logger.error(f"Azure Document Intelligence error: {str(e)}")
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail="Failed to analyze receipt. Please try again with a clearer image."
         )
 
 def analyze_receipt_from_url(url: str):
@@ -332,6 +370,14 @@ async def analyze_receipt_upload(
         if os.path.exists(file_path):
             os.remove(file_path)
         raise e
+    finally:
+        # Always clean up the uploaded file after processing
+        if os.path.exists(file_path):
+            try:
+                os.remove(file_path)
+                logger.info(f"Cleaned up temporary file: {file_path}")
+            except Exception as cleanup_error:
+                logger.warning(f"Failed to clean up file {file_path}: {cleanup_error}")
 
 @app.post("/analyze/url", response_model=ReceiptResponse)
 async def analyze_receipt_url(
